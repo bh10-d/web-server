@@ -63,7 +63,7 @@
                       </grid>
                     </constraints>
                     <properties>
-                      <text value="8080"/>
+                      <text value="5000"/>
                     </properties>
                   </component>
                 </children>

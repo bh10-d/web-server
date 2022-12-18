@@ -1,69 +1,88 @@
 package org.example;
 
 import javax.swing.*;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.InetAddress;
+import java.io.*;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.logging.Logger;
 
 public class HttpConnectionWorkerThread extends Thread{
 
     private Socket socket;
     private JTextArea serverLogText;
-    HttpConnectionWorkerThread(Socket socket, JTextArea serverLogText) {
+    InputStream inputStream;
+    BufferedOutputStream dataOut;
+    PrintWriter out;
+    byte[] buffer = new byte[10000];
+
+    HttpConnectionWorkerThread(Socket socket, JTextArea serverLogText) throws IOException {
         this.socket = socket;
         this.serverLogText = serverLogText;
+        inputStream = socket.getInputStream();
+        dataOut = new BufferedOutputStream(socket.getOutputStream());
+        out = new PrintWriter(socket.getOutputStream());
+        inputStream.read(buffer);
     }
     @Override
     public void run() {
-        InputStream inputStream = null;
-        OutputStream outputStream = null;
         try {
-            inputStream = socket.getInputStream();
-            outputStream = socket.getOutputStream();
+            HttpRequest httpRequest = new HttpRequest(inputStream, out, dataOut, socket, buffer);
+            httpRequest.informationRequest(serverLogText);
+            httpRequest.handleRequest();
 
-            byte[] buffer = new byte[10000];
-            inputStream.read(buffer);
-            InetAddress myIp = InetAddress.getLocalHost();
-            String request = new String(buffer);
-            String text =serverLogText.getText() + "\n" + myIp + "\n" + request;
-            serverLogText.setText(text);
-            String htmls = "<html><head><title>Web Server Basic</title></head><body><h1>Hello World</h1></body></html>";
-            final String CRLF = "\n\r";
-
-            String response =
-                    "HTTP/1.1.200 OK" + CRLF +
-                            "Content-Length: " + htmls.getBytes().length + CRLF +
-                            CRLF +
-                            htmls +
-                            CRLF + CRLF;
-            outputStream.write(response.getBytes());
             inputStream.close();
-            outputStream.close();
+            out.close();
+            dataOut.close();
             socket.close();
-
             sleep(3000);
             System.out.println("Connecting Processing Finished ...");
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            try {
-                if(inputStream != null) {
-                    inputStream.close();
-                }
-                if(outputStream != null) {
-                    outputStream.close();
-                }
-                if(socket != null) {
-                    socket.close();
-                }
-            } catch (Exception e) {
-
-            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
-
     }
+
+//    // doc file
+//    private byte[] readfileData(File file, int filelength) throws IOException{
+//        FileInputStream fileIn = null;
+//        byte[] fileData = new byte[filelength];
+//
+//        try{
+//            fileIn = new FileInputStream(file);
+//            fileIn.read(fileData);
+//        }finally {
+//            if(fileIn != null)
+//                fileIn.close();
+//        }
+//        return fileData;
+//    }
+//
+//    // tra ve loai co ho tro
+//    private String getContentType(String fileRequested){
+//        if(fileRequested.endsWith(".htm")||fileRequested.endsWith(".html")){
+//            return "text/html";
+//        }else{
+//            return "text/plain";
+//        }
+//    }
+//
+//    // file k tim thay || file khong ton tai
+//    private void fileNotFound(PrintWriter out, OutputStream dataOut, String fileRequest) throws IOException{
+//        File file = new File(WEB_ROOT, FILE_NOT_FOUND);
+//        int fileLength = (int) file.length();
+//        String content = "text/html";
+//        byte[] fileData = readfileData(file,fileLength);
+//
+//        out.println("HTTP/1.1 404 File Not Found");
+//        out.println("Content-length: " + fileLength);
+//        out.println();
+//        out.flush();
+//
+//        dataOut.write(fileData, 0, fileLength);
+//        dataOut.flush();
+//
+//        if(verbose){
+//            System.out.println("File "+fileRequest+" not found");
+//        }
+//    }
+
 }
